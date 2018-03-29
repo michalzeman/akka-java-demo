@@ -62,17 +62,26 @@ public class PingPongActor extends AbstractActor {
     return receiveBuilder()
         .match(StartMsg.class, startMsgMsg -> {
           log.info("StartMsg: "+ this.self().path().name());
+          startMsgMsg.actor.tell(new PingMsg("Ping from actor"+ this.self().path().name()), getSelf());
+          getContext().getSystem().scheduler().scheduleOnce(Duration.create(1, TimeUnit.MINUTES), getSelf(), new StopMsg()
+              , getContext().dispatcher(), null);
         })
         .match(PingMsg.class, pingMsg -> {
           log.info("Ping -> Actor name: " +this.self().path().name()+ " with payload: " + pingMsg.payload);
           countPing += 1;
+          getSender().tell(new PongMsg("Pong from actor "+ this.self().path().name()+
+              " countPing: "+countPing+" ,countPong: "+countPong), getSelf());
         })
         .match(PongMsg.class, pongMsg -> {
           log.info("Pong -> name: "+ this.self().path().name()+ " with payload: " + pongMsg.payload);
           countPong += 1;
+          getSender().tell(new PingMsg("Ping from actor "+ this.self().path().name()+
+              " countPing: "+countPing+" ,countPong: "+countPong), getSelf());
         })
         .match(StopMsg.class, stopMsg -> {
           log.info("StopMsg: "+ this.self().path().name());
+          getContext().stop(getSelf());
+          getSender().tell(new StopDoneMsg(), self());
         })
         .build();
   }

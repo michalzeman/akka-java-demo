@@ -46,7 +46,9 @@ public class BankTransactionActor extends AbstractActor {
             transactionMsg -> {
               log.info(this.self().path().name()+ "-> TransactionMsg start, amount: "+transactionMsg.amount);
               sender = getSender();
-        })
+              transactionMsg.from.tell(new BankAccountActor.WithdrawMsg(transactionMsg.amount), getSelf());
+              getContext().become(awaitFrom(transactionMsg.from, transactionMsg.to, transactionMsg.amount));
+            })
         .build();
   }
 
@@ -54,9 +56,12 @@ public class BankTransactionActor extends AbstractActor {
     return receiveBuilder()
         .match(BankAccountActor.DoneMsg.class, doneMsg -> {
           log.info(this.self().path().name()+ "-> awaitFrom Done!");
+          to.tell(new BankAccountActor.DepositMsg(amount), getSelf());
+          getContext().become(awaitTo(from, to, amount));
         })
         .match(BankAccountActor.FailedMsg.class, failedMsg -> {
           log.info(this.self().path().name()+ "-> awaitFrom Failed!");
+          getContext().stop(getSelf());
         })
         .build();
   }
@@ -65,9 +70,15 @@ public class BankTransactionActor extends AbstractActor {
     return receiveBuilder()
         .match(BankAccountActor.DoneMsg.class, doneMsg -> {
           log.info(this.self().path().name()+ "-> awaitTo Done!");
+          from.tell(new BankAccountActor.DoneMsg(), getSelf());
+          sender.tell(new DoneMsg(), getSelf());
+          getContext().stop(getSelf());
         })
         .match(BankAccountActor.FailedMsg.class, failedMsg -> {
           log.info(this.self().path().name()+ "-> awaitFrom failed!");
+          from.tell(new BankAccountActor.DepositMsg(amount), getSelf());
+          sender.tell(new FailedMsg(), getSelf());
+          getContext().stop(getSelf());
         })
         .build();
   }

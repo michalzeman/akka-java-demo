@@ -69,7 +69,18 @@ public class BankAccountActor extends AbstractActor {
    * @param amount
    */
   private void updateBalance(BigDecimal amount) {
-
+    if (amount.compareTo(BigDecimal.ZERO) < 0) {
+      BigDecimal result = balance.add(amount);
+      if (result.compareTo(BigDecimal.ZERO) < 0) {
+        getSender().tell(new FailedMsg(), getSelf());
+      } else {
+        balance = result;
+        getSender().tell(new DoneMsg(), getSelf());
+      }
+    } else {
+      balance = balance.add(amount);
+      getSender().tell(new DoneMsg(), getSelf());
+    }
   }
 
 }
